@@ -67,7 +67,7 @@ Primer: namesto *MacAddressVirtualLocalAreaNetworkServer* uporabimo *macvlan*.
 lxc profile copy default MojProfil
 lxc profile edit MojProfil
 ```
-Konfiguracijska datoteka se lahko odpre z urejevalnikom besedila *nano*.
+Konfiguracijska datoteka se odpre z urejevalnikom besedila *nano*.
 
 ``` yaml
 config: {}
@@ -104,9 +104,9 @@ enp4s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 ```
 V tem primeru je ime omrežnega vmesnika **enp4s0**.
 
-Z ukazom `lxc profile assign <ime containerja>` nastavimo profil containerju. Da uveljavimo spremembe ga moramo še ponovno zagnait.
+Z ukazom `lxc profile assign <ime containerja> <ime profila>` nastavimo profil containerju. Da uveljavimo spremembe ga moramo še ponovno zagnait.
 ``` bash
-lxc profile assign MojContainer
+lxc profile assign MojContainer MojProfil
 lxc restart MojContainer
 ```
 Zdaj bo container prejel svoj MAC naslov in se povezal v isto omrežje kot gostiltelj.
@@ -127,7 +127,7 @@ Apache je primarno spletni strežnik. Omogoča pa tudi preusmeritev prometa na d
 #### Osnovna namestitev
 Začnimo z nameščanjem Apache-ja na glavnem strežniku:
 ``` bash
-sudo apt install apache2 -y
+apt install apache2 -y
 ```
 Apache privzeto prikazue spletno stran, ki je shranjena v mapi `/var/www/html`. Spremenimo vsebino spletne strani.
 ``` bash
@@ -252,7 +252,7 @@ Ker želimo da določena domena prikazuje spletno stran iz drugega strežnika mo
         ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined
 
-				ProxyPreserveHost On
+        ProxyPreserveHost On
         ProxyPass / http://10.7.4.15:8080/
         ProxyPassReverse / http://10.7.4.15:8080/
 </VirtualHost>
@@ -290,3 +290,53 @@ sudo snap set nextcloud ports.http=8080
 #### Reference
 * https://nextcloud.com/
 * https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-nextcloud-on-ubuntu-18-04
+
+## Certbot
+Certbot je program, ki nam pomaga pri konfiguraciji spletenega strežnika in pridobivanju certifikata od organizacije Let's Encrypt. Omogoča nam da naša spletna stran uporablja HTTPS protokol, ki je za razliko od HTTP kriptiran.
+
+Začnimo z namestitvijo programa Certbot:
+``` bash
+apt-get update
+apt-get install software-properties-common
+add-apt-repository ppa:certbot/certbot
+apt-get update
+apt-get install python-certbot-apache
+```
+
+Zaženimo Certbot:
+``` bash
+sudo certbot --apache
+```
+Če smo za vsako spletno naredili konfiguracijsko datoteko v mapi `sites-available` bo Certbot to zaznal in nas vprašal za katere spletne strani želimo namestiti certifikat. Če želimo certifikat za vse strani pritisnemo enter.
+```
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Plugins selected: Authenticator apache, Installer apache
+
+Which names would you like to activate HTTPS for?
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+1: moja-domena.com
+2: moja-domena2.com
+3: moja-domena3.com
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Select the appropriate numbers separated by commas and/or spaces, or leave input
+blank to select all options shown (Enter 'c' to cancel):
+...
+```
+Nato nas program vpraša če želimo prisilno preusmeriti končnega uporabnika iz HTTP na HTTPS.
+```
+
+Please choose whether or not to redirect HTTP traffic to HTTPS, removing HTTP access.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+1: No redirect - Make no further changes to the webserver configuration.
+2: Redirect - Make all requests redirect to secure HTTPS access. Choose this for
+new sites, or if you're confident your site works on HTTPS. You can undo this
+change by editing your web server's configuration.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Select the appropriate number [1-2] then [enter] (press 'c' to cancel): 1
+...
+```
+Certbot je zgeneriral certifikat in ga shranil v mapi `/etc/letsencrypt/live`. Če smo izbrali da uporabnika preusmeri na HTTPS je v konfiguracijski datoteki spletne strani (v mapi `/etc/apache2/sites-available`) dodal `RewriteEngine`, ki preusmeri vse uprabnike iz HTTP na HTTPS. Poleg tega je ustvaril novo konfiguracijsko datoteko za HTTPS verzijo spletne strani, poimenovano `<ime originalne konfiguracijske datoteke>-le-ssl.conf`. Ustvaril jo je tako, da je skopiral originalno konfiguracijsko datoteko in ji dodal nastavitve za uporabo certifikata ter spremenil port iz 80 (HTTP) na 443 (HTTPS).
+
+#### Reference
+* https://certbot.eff.org/
+* https://letsencrypt.org/getting-started/
