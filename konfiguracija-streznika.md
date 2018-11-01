@@ -3,7 +3,7 @@
 ## Linux containers
 Linux containers omogoča virtualizacijo na nivoju operacijskega sistema.
 
-Najprej namestimo LXD (Linux containers daemon), ki skrbi za delovanje containerjev. In ga inicializiramo (med inicijalizacijo nas program vpraša za nekaj nastavitev, ki jih postimo na privzetih vrednostih).
+Najprej namestimo LXD (Linux containers daemon), ki skrbi za delovanje containerjev. In ga inicializiramo (med inicijalizacijo nas program vpraša za nekaj nastavitev, ki jih pustimo na privzetih vrednostih).
 
 ```bash
 apt install lxd lxd-client
@@ -59,7 +59,7 @@ lxc remove MojContainer
 #### Omrežne nastavitve
 Po privzetih nastavitvah so containerji povezani v virtualno omrežje, ki je prek gostitelja, ki se obnaša kot virtualni router, povezano na internet.
 
-Če želimo dostopati do containerjev iz drugih omrežij moramo nastaviti da so povezani v isto omrežje kot gostitelj. To naredimo tako da containerju dodelimo profil z nastavitvami. Privzeto vsak container uporablja profil *default*. Naredimo nov profil tako, da skopiramo z ukazom `lxc profile copy <ime originalnega profila> <ime profila kopije>` privzetega in ga uredimo z ukazom `lxc profile edit <ime profila>`.
+Če želimo dostopati do containerjev iz drugih omrežij moramo nastaviti da so povezani v isto omrežje kot gostitelji. To naredimo tako da containerju dodelimo profil z nastavitvami. Privzeto vsak container uporablja profil *default*. Nov profil naredimo tako, da skopiramo *default* profil z ukazom `lxc profile copy <ime originalnega profila> <ime profila kopije>`. Uredimo ga z ukazom `lxc profile edit <ime profila>`.
 
 **Iz praktičnih razlogov izberemo čim krajše ime profila!**
 Primer: namesto *MacAddressVirtualLocalAreaNetworkServer* uporabimo *macvlan*.
@@ -67,7 +67,7 @@ Primer: namesto *MacAddressVirtualLocalAreaNetworkServer* uporabimo *macvlan*.
 lxc profile copy default MojProfil
 lxc profile edit MojProfil
 ```
-Konfiguracijska datoteka se odpre z urejevalnikom besedila *nano*.
+Konfiguracijska datoteka se lahko odpre z urejevalnikom besedila *nano*.
 
 ``` yaml
 config: {}
@@ -111,6 +111,7 @@ lxc restart MojContainer
 ```
 Zdaj bo container prejel svoj MAC naslov in se povezal v isto omrežje kot gostiltelj.
 
+Kadar že v začetku vemo ime profila, ki ga želimo dodeliti novemu containerju, to lahko naredimo že pri ustvarjanju containerja z dodatno možnostjo *-p*: `lxc launch <slika operacijskega sistema> <ime containerja> -p imeProfila`.
 #### Reference:
 *	https://linuxcontainers.org
 *	https://help.ubuntu.com/lts/serverguide/lxd.html.en
@@ -121,16 +122,18 @@ Zdaj bo container prejel svoj MAC naslov in se povezal v isto omrežje kot gosti
 ## Apache
 Apache je primarno spletni strežnik. Omogoča pa tudi preusmeritev prometa na drug strežnik s pomočjo proxy-ja.
 
+*(Proxy je poseben HTTP strežnik, ki običajno deluje na požarnem zidu naprave. Proxy čaka na prošnje znotraj požarnega zidu in jih posreduje naprej do drugega strežnika, ki je lahko tudi izven požarnega zidu, ko dobi odgovor ga potem vrne nazaj stranki.)*
+
 #### Osnovna namestitev
-Začnimo z nameščanjem Apache na glavnem strežniku:
+Začnimo z nameščanjem Apache-ja na glavnem strežniku:
 ``` bash
-apt install apache2 -y
+sudo apt install apache2 -y
 ```
 Apache privzeto prikazue spletno stran, ki je shranjena v mapi `/var/www/html`. Spremenimo vsebino spletne strani.
 ``` bash
 nano /var/www/html/index.html
 ```
-Z oreodjem `curl` lahko stestiramo spletni strežnik.
+Z orodjem `curl` lahko stestiramo spletni strežnik, tako da preberemo, kaj je na spletni strani.
 ``` bash
 curl localhost
 ```
@@ -142,7 +145,7 @@ to je glavni strežnik
 
 #### Konfiguracija
 Večina konfiguracijskih datotek za Apache se nahaja v mapi `/etc/apache2`. Če pogledamo vsebino te mape najdemo kar nekaj datotek in map:
-* `apache2.conf`: To je glavna konfiguracijska datoteka. Skoraj vse bi lahko nastavili v tej datotieki, a je priporočljivo, da uporabimo več datotek za lažjo preglednost.
+* `apache2.conf`: To je glavna konfiguracijska datoteka. Skoraj vse bi lahko nastavili v tej datoteki, a je priporočljivo, da uporabimo več datotek za lažjo preglednost.
 * `ports.conf`: Ta datoteka je namenjena nastavitvi portov (vrat) na katerih so dostopne spletne strani.
 * `sites-available`: V tej mapi so shranjene konfiguracijske datoteke za vse spletne strani.
 * `sites-enabled`: V tej mapi so linki do konfiguracijsikih datotek, ki so v mapi *sites-available*, za spletne strani, ki so trenutno omogočene.
@@ -173,7 +176,7 @@ Nastavimo parametere:
         CustomLog ${APACHE_LOG_DIR}/access.log combined
 </VirtualHost>
 ```
-Da se bo konfiguracijska datoteka, ki smo jo pravkar naredili, uporabila moramo narediti link v mapi `sites-enabled`, ki kaže na našo konfiguracijsko datoteko. To naredimo z ukazom `a2ensite <konfiguracijska datoteka>` (za ta ukaz poterbujemo samo ime konfiguracijske datoteka v mapi sites-available, ni potrebno pisati končnice).
+Da se bo konfiguracijska datoteka, ki smo jo pravkar naredili, uporabila moramo narediti link v mapi `sites-enabled`, ki kaže na našo konfiguracijsko datoteko. To naredimo z ukazom `a2ensite <konfiguracijska datoteka>` (za ta ukaz potrebujemo samo ime konfiguracijske datoteka v mapi sites-available, ni potrebno pisati končnice).
 ``` bash
 a2ensite mojaDomena
 ```
@@ -193,13 +196,13 @@ Da se uveljavijo spremembe moramo ponovno zagnati apache:
 service apache2 restart
 ```
 
-Zdaj bo apache poizvedbam iz domene *moja-domena.com* postregel iz mape `/var/www/mojaDomena`, vsem ostalim poizvedbam pa iz mape `/var/www/html`.
+Sedaj bo apache poizvedbam iz domene *moja-domena.com* postregel iz mape `/var/www/mojaDomena`, vsem ostalim poizvedbam pa iz mape `/var/www/html`.
 Če želimo imeti še več strani za različne domene postopek ponovimo.
 
 #### Proxy
-Recimo da imamo več strežnikov (ki so lahko tudi virtualni - containerji) v istem omrežju z enim zunanjim IP naslovom. Želeli bi za različne domene prikazati različno spletno stran, ki jo gosti različni strežnik.
+Recimo, da imamo več strežnikov (ki so lahko tudi virtualni - containerji) v istem omrežju z enim zunanjim IP naslovom. Želeli bi za različne domene prikazati različno spletno stran, ki jo gostijo različni strežniki.
 
-To lahko naredimo tako, da ves promet najprej pripeljemo na glavni strežnik. Ta pa se glede na domeno kateri je namenjen promet preusmeri na pravi strežnik.
+To lahko naredimo tako, da ves promet najprej pripeljemo na glavni strežnik. Ta pa potem promet, glede na domeno kateri je namenjen, preusmeri na pravi strežnik.
 
 Najprej namestimo Apache (lahko tudi kateri koli drugi strežnik) na drugem (lahko tudi virtalnem) strežniku. Pomembno je da spletnemu strežniku spremenimo port. Če uprabljamo apache to naredimo v datotekah `/etc/apache2/ports.conf` in `/etc/apache2/sites-available/000-default.conf`
 
@@ -249,21 +252,22 @@ Ker želimo da določena domena prikazuje spletno stran iz drugega strežnika mo
         ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined
 
-        ProxyPreserveHost On
+				ProxyPreserveHost On
         ProxyPass / http://10.7.4.15:8080/
         ProxyPassReverse / http://10.7.4.15:8080/
 </VirtualHost>
 ```
-* `ProxyPreserveHost` prenese originalni `Host` header na drugi strežnik. To naj bi preprečilo, da te drugi strežnik redirekta na svoj IP.
+* `ProxyPreserveHost` prenese originalni `Host` header na drugi strežnik. To naj bi preprečilo, da te drugi strežnik preusmeri na svoj IP.
 * `ProxyPass` v tem primeru pove da vse poizvedbe (`/`) preusmeri na drugi strežnik z IP naslovom 10.7.4.15 in portom 8080.
 * `ProxyPassReverse` mora imeti enake nastavitve kot `ProxyPass`. Tudi ta naj bi preprečil, nezaželene preusmeritve končnega uporabnika, na IP naslov drugega strežnika, ki navzven ni dostopen.
 
 Da se te spremembe uveljavijo moramo ponovno zagnati apache.
 
-Če zdaj obiščemo moja-domena.com bo apache vrnil spletno stran iz drugega strežnika.
+Če sedaj obiščemo moja-domena.com bo apache vrnil spletno stran iz drugega strežnika.
 
 
 #### Reference
+* http://courses.cs.vt.edu/~cs4244/spring.09/documents/Proxies.pdf
 * https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html
 * http://httpd.apache.org/docs/2.2/mod/mod_proxy.html#proxypass
 * https://stackoverflow.com/questions/9831594/apache-and-node-js-on-the-same-server
@@ -273,7 +277,7 @@ Da se te spremembe uveljavijo moramo ponovno zagnati apache.
 * https://manpages.debian.org/jessie/apache2/a2ensite.8.en.html
 
 ## Nextcloud
-Nextcloud je zelo dober opensource program za ustvarjanje svojega oblaka za hrambo podatkov.
+Nextcloud je zelo dober opensource program za ustvarjanje svojega oblaka za shranjevanje podatkov.
 
 Namestimo ga z ukazom:
 ``` bash
